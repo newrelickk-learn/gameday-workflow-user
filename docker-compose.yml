@@ -1,0 +1,166 @@
+services:
+  # 注意: データベースは gameday-workflow-db サービスで管理されています
+  # データベースを起動するには、gameday-workflow-db ディレクトリで以下を実行してください:
+  #   cd ../gameday-workflow-db && docker-compose up -d
+
+  workflow-user:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gameday_workflow_user_api
+    ports:
+      - "8001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      # 外部データベースサービス（gameday-workflow-db）に接続
+      # 共有ネットワーク内ではコンテナ名（gameday_workflow_db）で接続可能
+      - ConnectionStrings__DefaultConnection=Host=gameday_workflow_db;Port=5432;Database=gameday_workflow_user;Username=gameday_user;Password=gameday_password
+      - Jwt__SecretKey=YourSuperSecretKeyThatShouldBeAtLeast32CharactersLong!
+      - Jwt__Issuer=UserService
+      - Jwt__Audience=UserService
+      - Jwt__ExpirationMinutes=60
+      - InternalService__ApiKey=InternalServiceApiKeyForGameDayWorkflow2024!
+      # Kestrel設定（環境変数で上書き可能）
+      - Kestrel__Limits__MaxConcurrentConnections=1000
+      - Kestrel__Limits__MaxConcurrentUpgradedConnections=1000
+      - Kestrel__Limits__KeepAliveTimeoutSeconds=120
+      - Kestrel__Limits__RequestHeadersTimeoutSeconds=30
+      - Kestrel__Limits__MaxRequestBodySize=10485760
+      # スレッドプール設定（環境変数で上書き可能）
+      - ThreadPool__MinWorkerThreads=0
+      - ThreadPool__MaxWorkerThreads=1000
+      - ThreadPool__MinCompletionPortThreads=0
+      - ThreadPool__MaxCompletionPortThreads=1000
+      # データベース接続プール設定（環境変数で上書き可能）
+      - Database__MaxPoolSize=200
+      - Database__MinPoolSize=10
+      - Database__ConnectionLifetime=0
+    networks:
+      - gameday-workflow-network
+    # 注意: データベースサービス（gameday-workflow-db）が起動している必要があります
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  builder:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_builder
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: dotnet build
+    profiles:
+      - build
+
+  restore:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_restore
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: dotnet restore
+    profiles:
+      - restore
+
+  test:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_test
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: dotnet test
+    profiles:
+      - test
+
+  test-coverage:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_test_coverage
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "
+        dotnet tool restore &&
+        mkdir -p coverage &&
+        dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./coverage/coverage.xml /p:Exclude='[*.Tests]*' &&
+        echo 'Coverage report generated in ./coverage/coverage.xml'
+      "
+    profiles:
+      - test-coverage
+
+  test-coverage-html:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_test_coverage_html
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "
+        dotnet tool restore &&
+        mkdir -p coverage &&
+        dotnet test /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./coverage/coverage.xml /p:Exclude='[*.Tests]*' &&
+        dotnet tool run reportgenerator -reports:./coverage/coverage.xml -targetdir:./coverage/html -reporttypes:Html &&
+        echo 'HTML coverage report generated in ./coverage/html/index.html'
+      "
+    profiles:
+      - test-coverage-html
+
+  test-mutation:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_test_mutation
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "
+        dotnet tool restore &&
+        cd src/UserService.Api &&
+        dotnet tool run dotnet-stryker --config-file ../../stryker.json
+      "
+    profiles:
+      - test-mutation
+
+  migrate:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_migrate
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    environment:
+      # 外部データベースサービス（gameday-workflow-db）に接続
+      # 共有ネットワーク内ではコンテナ名（gameday_workflow_db）で接続可能
+      - ConnectionStrings__DefaultConnection=Host=gameday_workflow_db;Port=5432;Database=gameday_workflow_user;Username=gameday_user;Password=gameday_password
+    networks:
+      - gameday-workflow-network
+    command: >
+      sh -c "
+        cd src/UserService.Api &&
+        dotnet ef database update
+      "
+    # 注意: データベースサービス（gameday-workflow-db）が起動している必要があります
+    profiles:
+      - migrate
+
+  clean:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: gameday_workflow_user_clean
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "
+        dotnet clean &&
+        find . -type d -name bin -exec rm -rf {} + 2>/dev/null || true &&
+        find . -type d -name obj -exec rm -rf {} + 2>/dev/null || true
+      "
+    profiles:
+      - clean
+
+networks:
+  gameday-workflow-network:
+    external: true
+    name: gameday-workflow-network

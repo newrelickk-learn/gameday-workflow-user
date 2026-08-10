@@ -1,0 +1,212 @@
+openapi: 3.0.3
+info:
+  title: User Service API
+  description: |
+    GameDay Workflow システムのユーザー管理サービスAPI
+    認証とユーザー情報管理を提供します。
+  version: 1.0.0
+  contact:
+    name: GameDay Workflow Team
+servers:
+  - url: http://localhost:8001
+    description: ローカル開発環境
+  - url: https://api.gameday-workflow.example.com/user-service
+    description: 本番環境
+
+tags:
+  - name: Authentication
+    description: 認証関連のエンドポイント
+  - name: Users
+    description: ユーザー情報管理のエンドポイント
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: ユーザーログイン
+      description: メールアドレスとパスワードでログインし、JWTトークンを取得します
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: engineer@example.com
+              password: password123
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                user:
+                  id: "28151"
+                  name: "開発エンジニア"
+                  email: engineer@example.com
+                  role: engineer
+                  department: "開発組織"
+        '401':
+          description: 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid credentials"
+                message: "メールアドレスまたはパスワードが正しくありません"
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: ユーザー情報取得
+      description: ユーザーIDを指定してユーザー情報を取得します
+      operationId: getUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ユーザーID
+          schema:
+            type: string
+            example: "28151"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: ユーザー情報取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: "28151"
+                name: "開発エンジニア"
+                email: engineer@example.com
+                role: engineer
+                department: "開発組織"
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ユーザーが見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "User not found"
+                message: "指定されたユーザーIDのユーザーが見つかりません"
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWTトークンによる認証
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+          example: engineer@example.com
+        password:
+          type: string
+          format: password
+          description: パスワード
+          example: password123
+
+    LoginResponse:
+      type: object
+      required:
+        - token
+        - user
+      properties:
+        token:
+          type: string
+          description: JWT認証トークン
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - role
+      properties:
+        id:
+          type: string
+          description: ユーザーID
+          example: "28151"
+        name:
+          type: string
+          description: ユーザー名
+          example: "開発エンジニア"
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+          example: engineer@example.com
+        role:
+          $ref: '#/components/schemas/UserRole'
+        department:
+          type: string
+          nullable: true
+          description: 所属部署
+          example: "開発組織"
+
+    UserRole:
+      type: string
+      enum:
+        - engineer
+        - manager
+        - admin
+      description: ユーザーの役割
+      example: engineer
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: エラーコード
+          example: "INVALID_CREDENTIALS"
+        message:
+          type: string
+          description: エラーメッセージ
+          example: "メールアドレスまたはパスワードが正しくありません"
+

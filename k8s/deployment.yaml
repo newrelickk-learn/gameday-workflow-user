@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gameday-workflow-user
+  namespace: gameday-workflow
+  labels:
+    app: gameday-workflow-user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gameday-workflow-user
+  template:
+    metadata:
+      labels:
+        app: gameday-workflow-user
+    spec:
+      containers:
+        - name: gameday-workflow-user
+          # CIのdeploy.ymlが `kubectl set image` で実際のECRイメージに差し替える。初回applyのみこのタグが使われる。
+          image: gameday-workflow-user:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: ASPNETCORE_URLS
+              value: "http://+:80"
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: gameday-workflow-user-secrets
+                  key: connection-string
+            - name: Jwt__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: gameday-workflow-user-secrets
+                  key: jwt-secret-key
+            - name: Jwt__Issuer
+              value: "UserService"
+            - name: Jwt__Audience
+              value: "UserService"
+            - name: Jwt__ExpirationMinutes
+              value: "60"
+            - name: InternalService__ApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: gameday-workflow-user-secrets
+                  key: internal-api-key
+            - name: Kestrel__Limits__MaxConcurrentConnections
+              value: "1000"
+            - name: Kestrel__Limits__MaxConcurrentUpgradedConnections
+              value: "1000"
+            - name: Kestrel__Limits__KeepAliveTimeoutSeconds
+              value: "120"
+            - name: Kestrel__Limits__RequestHeadersTimeoutSeconds
+              value: "30"
+            - name: Kestrel__Limits__MaxRequestBodySize
+              value: "10485760"
+            - name: Database__MaxPoolSize
+              value: "200"
+            - name: Database__MinPoolSize
+              value: "10"
+            - name: Database__ConnectionLifetime
+              value: "0"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5

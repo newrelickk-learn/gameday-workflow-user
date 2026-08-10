@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gameday-workflow-user
+  namespace: gameday-workflow
+  labels:
+    app: gameday-workflow-user
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: gameday-workflow-user
