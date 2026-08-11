@@ -65,6 +65,21 @@ spec:
               value: "10"
             - name: Database__ConnectionLifetime
               value: "0"
+            - name: CORECLR_ENABLE_PROFILING
+              value: "1"
+            - name: CORECLR_PROFILER
+              value: "{36032161-FFC0-4B61-B559-F6C5D41BAE5A}"
+            - name: CORECLR_NEWRELIC_HOME
+              value: "/usr/local/newrelic-dotnet-agent"
+            - name: CORECLR_PROFILER_PATH
+              value: "/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so"
+            - name: NEW_RELIC_APP_NAME
+              value: "gameday-workflow-user"
+            - name: NEW_RELIC_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gameday-workflow-newrelic-secrets
+                  key: license-key
           resources:
             requests:
               memory: "256Mi"
