@@ -42,7 +42,11 @@ public class UserRepository : IUserRepository
 
     public async Task<User> UpdateAsync(User user)
     {
-        _context.Users.Update(user);
+        // 呼び出し元は常に GetByIdAsync 等で取得した、同じ DbContext に既にトラッキング
+        // されているエンティティを渡す想定。Update() で再アタッチすると全プロパティが
+        // Modified 扱いになり、変更していない CreatedAt（DBの timestamp without time zone
+        // カラムから読み込んだ Kind=Unspecified な値）まで書き込み対象になってNpgsqlの
+        // 「UTC以外のKindは書き込めない」チェックでDbUpdateExceptionになるため呼ばない。
         await _context.SaveChangesAsync();
         return user;
     }
