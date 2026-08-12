@@ -28,6 +28,11 @@ public class UserRepository : IUserRepository
         return await _context.Users.ToListAsync();
     }
 
+    public async Task<IEnumerable<User>> GetByCompanyIdAsync(int companyId)
+    {
+        return await _context.Users.Where(u => u.CompanyId == companyId).ToListAsync();
+    }
+
     public async Task<User> CreateAsync(User user)
     {
         _context.Users.Add(user);

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UserService.Application.DTOs;
@@ -69,5 +70,88 @@ public class UsersController : ControllerBase
             return StatusCode(500, new { error = "INTERNAL_SERVER_ERROR", message = "サーバーエラーが発生しました" });
         }
     }
-}
 
+    /// <summary>
+    /// 人事部ユーザー専用: ログイン中ユーザー(hr)の所属企業(CompanyId)のユーザー一覧を返す。
+    /// 直属の上長(ManagerId)を編集する対象を選ぶための一覧表示に使う。
+    /// </summary>
+    [HttpGet("company")]
+    [Authorize(Roles = "hr")]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetCompanyUsers()
+    {
+        try
+        {
+            var caller = await GetCallerAsync();
+            if (caller == null)
+            {
+                return Unauthorized(new { error = "UNAUTHORIZED", message = "認証情報からユーザーを特定できません" });
+            }
+
+            if (caller.CompanyId == null)
+            {
+                return StatusCode(403, new { error = "COMPANY_NOT_SET", message = "所属企業が設定されていません" });
+            }
+
+            var users = await _userService.GetUsersByCompanyIdAsync(caller.CompanyId.Value);
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving company users");
+            return StatusCode(500, new { error = "INTERNAL_SERVER_ERROR", message = "サーバーエラーが発生しました" });
+        }
+    }
+
+    /// <summary>
+    /// 人事部ユーザー専用: 自社ユーザーの直属の上長(ManagerId)のみを更新する。
+    /// 他社のユーザー、または他社のユーザーを上長として指定する操作は拒否する。
+    /// </summary>
+    [HttpPatch("{id}/manager")]
+    [Authorize(Roles = "hr")]
+    public async Task<ActionResult<UserDto>> UpdateManager(string id, [FromBody] UpdateManagerRequestDto request)
+    {
+        try
+        {
+            var caller = await GetCallerAsync();
+            if (caller == null)
+            {
+                return Unauthorized(new { error = "UNAUTHORIZED", message = "認証情報からユーザーを特定できません" });
+            }
+
+            if (caller.CompanyId == null)
+            {
+                return StatusCode(403, new { error = "COMPANY_NOT_SET", message = "所属企業が設定されていません" });
+            }
+
+            var result = await _userService.UpdateManagerAsync(caller.CompanyId.Value, id, request.ManagerId);
+            if (!result.Success)
+            {
+                return result.ErrorCode switch
+                {
+                    "USER_NOT_FOUND" => NotFound(new { error = result.ErrorCode, message = result.ErrorMessage }),
+                    "FORBIDDEN_COMPANY_MISMATCH" => StatusCode(403, new { error = result.ErrorCode, message = result.ErrorMessage }),
+                    "INVALID_MANAGER" => BadRequest(new { error = result.ErrorCode, message = result.ErrorMessage }),
+                    _ => StatusCode(500, new { error = "INTERNAL_SERVER_ERROR", message = "サーバーエラーが発生しました" }),
+                };
+            }
+
+            return Ok(result.User);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating manager");
+            return StatusCode(500, new { error = "INTERNAL_SERVER_ERROR", message = "サーバーエラーが発生しました" });
+        }
+    }
+
+    private async Task<UserDto?> GetCallerAsync()
+    {
+        var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (callerId == null)
+        {
+            return null;
+        }
+
+        return await _userService.GetUserByIdAsync(callerId);
+    }
+}
