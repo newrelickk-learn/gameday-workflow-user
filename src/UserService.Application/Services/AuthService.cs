@@ -9,10 +9,13 @@ namespace UserService.Application.Services;
 
 public class AuthService : IAuthService
 {
-    // GameDay第0章: 一度でも正しいPod名で突破した会社(CompanyId)は、以後Pod名の入力を求めない。
+    // GameDay第0章: 一度でも正しいPod名で突破した会社(CompanyId)は、突破した時刻から
+    // POD_SATURATION_BYPASS_HOURS（既定24時間）が経つまでPod名の入力を求めない。
     // Serviceのselectorがリソース飽和Pod(USER_POD_ROLE=primary)1台に固定されているため、
     // プロセス内メモリで持つだけで一貫性が保てる。
-    private static readonly ConcurrentDictionary<int, bool> _podSaturationBypassedCompanies = new();
+    private static readonly ConcurrentDictionary<int, DateTime> _podSaturationBypassedCompanies = new();
+
+    private const int DefaultPodSaturationBypassHours = 24;
 
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
@@ -49,7 +52,7 @@ public class AuthService : IAuthService
 
             if (user.CompanyId.HasValue)
             {
-                _podSaturationBypassedCompanies[user.CompanyId.Value] = true;
+                _podSaturationBypassedCompanies[user.CompanyId.Value] = DateTime.UtcNow;
             }
         }
 
@@ -71,8 +74,8 @@ public class AuthService : IAuthService
         return new LoginResult(LoginStatus.Success, response);
     }
 
-    // このPod自身がリソース飽和役(USER_POD_ROLE=primary)で、かつこのユーザーの会社がまだ
-    // Pod名を突破していない場合のみ、チェックが必要
+    // このPod自身がリソース飽和役(USER_POD_ROLE=primary)で、かつこのユーザーの会社が
+    // まだPod名を突破していない（または突破から一定時間が経ち失効した）場合のみ、チェックが必要
     private bool RequiresPodSaturationCheck(int? companyId)
     {
         var podRole = _configuration["USER_POD_ROLE"];
@@ -81,7 +84,28 @@ public class AuthService : IAuthService
             return false;
         }
 
-        return !(companyId.HasValue && _podSaturationBypassedCompanies.ContainsKey(companyId.Value));
+        if (!companyId.HasValue)
+        {
+            return true;
+        }
+
+        if (!_podSaturationBypassedCompanies.TryGetValue(companyId.Value, out var bypassedAt))
+        {
+            return true;
+        }
+
+        var ttlHours = int.TryParse(_configuration["POD_SATURATION_BYPASS_HOURS"], out var configuredHours)
+            ? configuredHours
+            : DefaultPodSaturationBypassHours;
+
+        if (DateTime.UtcNow - bypassedAt < TimeSpan.FromHours(ttlHours))
+        {
+            return false;
+        }
+
+        // 失効。次回ログイン時はまたPod名の入力が必要になる
+        _podSaturationBypassedCompanies.TryRemove(companyId.Value, out _);
+        return true;
     }
 }
 

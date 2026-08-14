@@ -29,12 +29,13 @@ public class AuthServicePodSaturationTests
         UpdatedAt = DateTime.UtcNow,
     };
 
-    private static AuthService CreateAuthService(User user, string? podRole)
+    private static AuthService CreateAuthService(User user, string? podRole, string? bypassHours = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["USER_POD_ROLE"] = podRole,
+                ["POD_SATURATION_BYPASS_HOURS"] = bypassHours,
             })
             .Build();
 
@@ -131,6 +132,73 @@ public class AuthServicePodSaturationTests
             // 同じ会社の別ユーザーが、Pod名なしで再ログインしても通る（新しいAuthServiceインスタンスでも突破済みは共有される）
             var secondAuthService = CreateAuthService(user, "primary");
             var second = await secondAuthService.LoginAsync(new LoginRequest
+            {
+                Email = user.Email,
+                Password = CorrectPassword,
+            });
+
+            second.Status.Should().Be(LoginStatus.Success);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOSTNAME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Login_AfterBypassExpires_RequiresPodNameAgain()
+    {
+        Environment.SetEnvironmentVariable("HOSTNAME", "gameday-workflow-user-abc123");
+        try
+        {
+            var companyId = NextCompanyId();
+            var user = BuildUser(companyId);
+
+            // POD_SATURATION_BYPASS_HOURS=0 は「経過時間0時間以上で失効」= 突破した直後から
+            // 既に失効している状態を意味する（実運用の24時間デフォルトを、テストで即時失効に相当させる）。
+            var authService = CreateAuthService(user, "primary", bypassHours: "0");
+
+            var first = await authService.LoginAsync(new LoginRequest
+            {
+                Email = user.Email,
+                Password = CorrectPassword,
+                ImpactedPodName = "gameday-workflow-user-abc123",
+            });
+            first.Status.Should().Be(LoginStatus.Success);
+
+            var second = await authService.LoginAsync(new LoginRequest
+            {
+                Email = user.Email,
+                Password = CorrectPassword,
+            });
+
+            second.Status.Should().Be(LoginStatus.PodSaturated);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOSTNAME", null);
+        }
+    }
+
+    [Fact]
+    public async Task Login_WithinBypassWindow_DoesNotRequirePodNameAgain()
+    {
+        Environment.SetEnvironmentVariable("HOSTNAME", "gameday-workflow-user-abc123");
+        try
+        {
+            var companyId = NextCompanyId();
+            var user = BuildUser(companyId);
+            var authService = CreateAuthService(user, "primary", bypassHours: "24");
+
+            var first = await authService.LoginAsync(new LoginRequest
+            {
+                Email = user.Email,
+                Password = CorrectPassword,
+                ImpactedPodName = "gameday-workflow-user-abc123",
+            });
+            first.Status.Should().Be(LoginStatus.Success);
+
+            var second = await authService.LoginAsync(new LoginRequest
             {
                 Email = user.Email,
                 Password = CorrectPassword,
