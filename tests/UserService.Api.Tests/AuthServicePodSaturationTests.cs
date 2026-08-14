@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using UserService.Application.DTOs;
@@ -29,17 +31,27 @@ public class AuthServicePodSaturationTests
         UpdatedAt = DateTime.UtcNow,
     };
 
-    private static AuthService CreateAuthService(User user, string? podRole, string? bypassHours = null)
+    private static AuthService CreateAuthService(User user, string? podRole)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["USER_POD_ROLE"] = podRole,
-                ["POD_SATURATION_BYPASS_HOURS"] = bypassHours,
             })
             .Build();
 
         return new AuthService(new FakeUserRepository(user), new FakeJwtService(), configuration);
+    }
+
+    // AuthService内部のstatic「突破済み会社→突破したUTC日付」辞書に、テストからだけ直接書き込む
+    // （実装は本番のUTC日付比較ロジックそのままにしつつ、「前日に突破済み」の状態を再現するため）
+    private static void SeedBypassedDate(int companyId, DateOnly date)
+    {
+        var field = typeof(AuthService).GetField(
+            "_podSaturationBypassedCompanies",
+            BindingFlags.NonPublic | BindingFlags.Static)!;
+        var dict = (ConcurrentDictionary<int, DateOnly>)field.GetValue(null)!;
+        dict[companyId] = date;
     }
 
     [Fact]
@@ -146,70 +158,39 @@ public class AuthServicePodSaturationTests
     }
 
     [Fact]
-    public async Task Login_AfterBypassExpires_RequiresPodNameAgain()
+    public async Task Login_WhenBypassedOnAPreviousUtcDate_RequiresPodNameAgain()
     {
-        Environment.SetEnvironmentVariable("HOSTNAME", "gameday-workflow-user-abc123");
-        try
+        var companyId = NextCompanyId();
+        var user = BuildUser(companyId);
+        // 前日のUTC日付で突破済みだったことにする
+        SeedBypassedDate(companyId, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1));
+
+        var authService = CreateAuthService(user, "primary");
+        var result = await authService.LoginAsync(new LoginRequest
         {
-            var companyId = NextCompanyId();
-            var user = BuildUser(companyId);
+            Email = user.Email,
+            Password = CorrectPassword,
+        });
 
-            // POD_SATURATION_BYPASS_HOURS=0 は「経過時間0時間以上で失効」= 突破した直後から
-            // 既に失効している状態を意味する（実運用の24時間デフォルトを、テストで即時失効に相当させる）。
-            var authService = CreateAuthService(user, "primary", bypassHours: "0");
-
-            var first = await authService.LoginAsync(new LoginRequest
-            {
-                Email = user.Email,
-                Password = CorrectPassword,
-                ImpactedPodName = "gameday-workflow-user-abc123",
-            });
-            first.Status.Should().Be(LoginStatus.Success);
-
-            var second = await authService.LoginAsync(new LoginRequest
-            {
-                Email = user.Email,
-                Password = CorrectPassword,
-            });
-
-            second.Status.Should().Be(LoginStatus.PodSaturated);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("HOSTNAME", null);
-        }
+        result.Status.Should().Be(LoginStatus.PodSaturated);
     }
 
     [Fact]
-    public async Task Login_WithinBypassWindow_DoesNotRequirePodNameAgain()
+    public async Task Login_WhenBypassedOnTheSameUtcDate_DoesNotRequirePodNameAgain()
     {
-        Environment.SetEnvironmentVariable("HOSTNAME", "gameday-workflow-user-abc123");
-        try
+        var companyId = NextCompanyId();
+        var user = BuildUser(companyId);
+        // 今日のUTC日付で既に突破済みだったことにする
+        SeedBypassedDate(companyId, DateOnly.FromDateTime(DateTime.UtcNow));
+
+        var authService = CreateAuthService(user, "primary");
+        var result = await authService.LoginAsync(new LoginRequest
         {
-            var companyId = NextCompanyId();
-            var user = BuildUser(companyId);
-            var authService = CreateAuthService(user, "primary", bypassHours: "24");
+            Email = user.Email,
+            Password = CorrectPassword,
+        });
 
-            var first = await authService.LoginAsync(new LoginRequest
-            {
-                Email = user.Email,
-                Password = CorrectPassword,
-                ImpactedPodName = "gameday-workflow-user-abc123",
-            });
-            first.Status.Should().Be(LoginStatus.Success);
-
-            var second = await authService.LoginAsync(new LoginRequest
-            {
-                Email = user.Email,
-                Password = CorrectPassword,
-            });
-
-            second.Status.Should().Be(LoginStatus.Success);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("HOSTNAME", null);
-        }
+        result.Status.Should().Be(LoginStatus.Success);
     }
 
     [Theory]

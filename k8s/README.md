@@ -46,16 +46,9 @@ kubectl set env deployment/gameday-workflow-user CPU_SATURATION_ENABLED=false -n
 ## GameDay第0章: 「突破済み」の有効期限
 
 チームが一度正しいPod名でログインに成功すると、その会社(CompanyId)はプロセス内メモリに
-突破済みとして記録され、以後はPod名なしでログインできる。この記録は突破した時刻から
-`POD_SATURATION_BYPASS_HOURS`（既定24時間、`deployment.yaml`に未設定の場合はコード側の
-デフォルト値が使われる）で失効し、それ以降は再度Pod名の入力が必要になる。複数日にわたる
-演習で毎日ウォームアップし直したい場合はデフォルトのままでよい。有効期限を変えたい場合は
-`deployment.yaml`のenvに`POD_SATURATION_BYPASS_HOURS`を追加する。
-
-```bash
-# 例: 有効期限を8時間に変更する場合
-kubectl set env deployment/gameday-workflow-user POD_SATURATION_BYPASS_HOURS=8 -n gameday-workflow
-```
+「突破したUTC日付」として記録され、以後はPod名なしでログインできる。この記録はUTCの日付が
+変わった時点（UTC 0時）で失効し、それ以降は再度Pod名の入力が必要になる。複数日にわたる
+演習で、日ごとにこのウォームアップをやり直してもらう狙い。
 
 なお、この記録はPod内メモリのみで保持されるため、primary Podが再起動（`CPU_SATURATION_ENABLED`の
-切り替えやイメージ更新など）すると、経過時間に関わらずその時点で全会社分がリセットされる。
+切り替えやイメージ更新など）すると、UTCの日付が変わっていなくてもその時点で全会社分がリセットされる。
