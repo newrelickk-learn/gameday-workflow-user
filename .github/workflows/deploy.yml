@@ -106,10 +106,14 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           sed -i "s|image: .*|image: ${{ needs.build.outputs.image }}|" k8s/deployment.yaml
+          # GameDay第0章: standby Podも同じイメージを使う（USER_POD_ROLEの値だけがprimaryと異なる）
+          sed -i "s|image: .*|image: ${{ needs.build.outputs.image }}|" k8s/standby-deployment.yaml
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/standby-deployment.yaml
           kubectl apply -f k8s/service.yaml
           kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }}-standby -n ${{ env.K8S_NAMESPACE }}
 
       - name: Create deployment marker in New Relic
         run: |

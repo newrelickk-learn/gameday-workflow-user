@@ -4,6 +4,6 @@ namespace UserService.Application.Services;
 
 public interface IAuthService
 {
-    Task<LoginResponse?> LoginAsync(LoginRequest request);
+    Task<LoginResult> LoginAsync(LoginRequest request);
 }
 

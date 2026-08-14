@@ -1,25 +1,26 @@
-# GameDay第0章: このPodがリソース（CPU）を使い切っている「primary」役。
-# ServiceのselectorがPod-role: primaryのみを向くため、ログインリクエストは常にこのPodに届く。
-# 対になる gameday-workflow-user-standby-deployment.yaml は平常なPod（見せかけの比較対象）。
+# GameDay第0章: リソースを使い切っていない「standby」役のPod。
+# gameday-workflow-user-deployment.yaml（primary、実際にログインを処理する側）と対になる、
+# 見せかけの比較対象。Service (gameday-workflow-user) のselectorはpod-role: primaryのみを
+# 向くため、このPodはトラフィックを一切受けない。CPUは平常のまま、CpuSaturationServiceも無効。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: gameday-workflow-user
+  name: gameday-workflow-user-standby
   namespace: gameday-workflow
   labels:
     app: gameday-workflow-user
-    pod-role: primary
+    pod-role: standby
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: gameday-workflow-user
-      pod-role: primary
+      pod-role: standby
   template:
     metadata:
       labels:
         app: gameday-workflow-user
-        pod-role: primary
+        pod-role: standby
     spec:
       containers:
         - name: gameday-workflow-user
@@ -32,14 +33,9 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: "Production"
-            # GameDay第0章: このPodをリソース飽和役にする。CpuSaturationServiceが起動する。
+            # GameDay第0章: standby役なのでCPU負荷は発生させない
             - name: USER_POD_ROLE
-              value: "primary"
-            # 演習中に不安定になった場合の緊急停止スイッチ。falseにしてPodを再起動（例:
-            # `kubectl set env deployment/gameday-workflow-user CPU_SATURATION_ENABLED=false -n gameday-workflow`）
-            # すれば、イメージの再ビルド・再デプロイなしに即座に負荷を止められる。
-            - name: CPU_SATURATION_ENABLED
-              value: "true"
+              value: "standby"
             - name: ASPNETCORE_URLS
               value: "http://+:80"
             - name: ConnectionStrings__DefaultConnection
@@ -96,27 +92,20 @@ spec:
                   key: license-key
           resources:
             requests:
-              # GameDay第0章: CPU limitを絞ってサチらせるためrequestsも合わせて下げる。
-              # memoryはOOM Killedのリスクを避けるため変更しない。
               memory: "256Mi"
-              cpu: "50m"
+              cpu: "250m"
             limits:
               memory: "1Gi"
-              cpu: "100m"
+              cpu: "1000m"
           livenessProbe:
             httpGet:
               path: /health
               port: 80
             initialDelaySeconds: 30
-            # GameDay第0章: CPUがサチっていてもhealth応答が遅れただけで再起動しないよう緩める
-            periodSeconds: 15
-            timeoutSeconds: 5
-            failureThreshold: 8
+            periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
               port: 80
             initialDelaySeconds: 10
-            periodSeconds: 15
-            timeoutSeconds: 5
-            failureThreshold: 8
+            periodSeconds: 5

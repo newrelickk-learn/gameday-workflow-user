@@ -22,13 +22,14 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var response = await _authService.LoginAsync(request);
-            if (response == null)
-            {
-                return Unauthorized(new { error = "INVALID_CREDENTIALS", message = "メールアドレスまたはパスワードが正しくありません" });
-            }
+            var result = await _authService.LoginAsync(request);
 
-            return Ok(response);
+            return result.Status switch
+            {
+                LoginStatus.Success => Ok(result.Response),
+                LoginStatus.PodSaturated => StatusCode(503, new { error = "POD_SATURATED", message = "現在サーバーが高負荷のためログインできません" }),
+                _ => Unauthorized(new { error = "INVALID_CREDENTIALS", message = "メールアドレスまたはパスワードが正しくありません" }),
+            };
         }
         catch (Exception ex)
         {

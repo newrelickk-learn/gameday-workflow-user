@@ -8,6 +8,8 @@ namespace UserService.Api.Tests;
 
 public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
 {
+    public HttpClient Client => CreateClient();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>

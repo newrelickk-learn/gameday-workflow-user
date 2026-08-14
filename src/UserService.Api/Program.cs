@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using UserService.Api.Authentication;
+using UserService.Api.Services;
 using UserService.Application.Services;
 using UserService.Infrastructure.Data;
 using UserService.Infrastructure.Data.Repositories;
@@ -70,6 +71,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService.Application.Services.UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+
+// GameDay第0章: USER_POD_ROLE=primary のPodのみ内部でCPU負荷を発生させる（詳細はサービス内を参照）
+builder.Services.AddHostedService<CpuSaturationService>();
 
 // JWT Authentication
 var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");

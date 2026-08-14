@@ -14,3 +14,6 @@ spec:
       name: http
   selector:
     app: gameday-workflow-user
+    # GameDay第0章: リソースが飽和している側(primary)のPodだけをエンドポイントにする。
+    # standby(gameday-workflow-user-standby-deployment.yaml)には一切ルーティングしない。
+    pod-role: primary
