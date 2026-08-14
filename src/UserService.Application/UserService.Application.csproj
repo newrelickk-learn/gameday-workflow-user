@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NewRelic.Agent.Api" Version="10.53.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\UserService.Domain\UserService.Domain.csproj" />
     <ProjectReference Include="..\UserService.Infrastructure\UserService.Infrastructure.csproj" />
   </ItemGroup>

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NewRelicAgent = NewRelic.Api.Agent.NewRelic;
 using UserService.Application.DTOs;
 using UserService.Application.Services;
 
@@ -25,6 +26,8 @@ public class UsersController : ControllerBase
     {
         try
         {
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.id", id);
+
             var user = await _userService.GetUserByIdAsync(id);
             if (user == null)
             {
@@ -45,11 +48,16 @@ public class UsersController : ControllerBase
     {
         try
         {
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.id", id);
+
             var user = await _userService.GetUserByIdAsync(id);
             if (user == null)
             {
                 return NotFound(new { error = "USER_NOT_FOUND", message = "指定されたユーザーIDのユーザーが見つかりません" });
             }
+
+            var managerFound = user.ManagerId != null;
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.managerFound", managerFound);
 
             if (user.ManagerId == null)
             {
@@ -112,6 +120,12 @@ public class UsersController : ControllerBase
     {
         try
         {
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.id", id);
+            if (request.ManagerId.HasValue)
+            {
+                NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.newManagerId", request.ManagerId.Value);
+            }
+
             var caller = await GetCallerAsync();
             if (caller == null)
             {
@@ -124,6 +138,10 @@ public class UsersController : ControllerBase
             }
 
             var result = await _userService.UpdateManagerAsync(caller.CompanyId.Value, id, request.ManagerId);
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute(
+                "user.updateManagerResult",
+                result.Success ? "Success" : (result.ErrorCode ?? "UNKNOWN_ERROR"));
+
             if (!result.Success)
             {
                 return result.ErrorCode switch
@@ -152,6 +170,16 @@ public class UsersController : ControllerBase
             return null;
         }
 
-        return await _userService.GetUserByIdAsync(callerId);
+        var caller = await _userService.GetUserByIdAsync(callerId);
+        if (caller != null)
+        {
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("caller.id", caller.Id);
+            if (caller.CompanyId.HasValue)
+            {
+                NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("caller.companyId", caller.CompanyId.Value);
+            }
+        }
+
+        return caller;
     }
 }

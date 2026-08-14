@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using BCrypt.Net;
 using Microsoft.Extensions.Configuration;
+using NewRelicAgent = NewRelic.Api.Agent.NewRelic;
 using UserService.Application.DTOs;
 using UserService.Infrastructure.Data.Repositories;
 using UserService.Infrastructure.Services;
@@ -29,12 +30,20 @@ public class AuthService : IAuthService
     public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email);
+        if (user != null)
+        {
+            AddCustomAttribute("user.email", user.Email);
+        }
+
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             return new LoginResult(LoginStatus.InvalidCredentials);
         }
 
-        if (RequiresPodSaturationCheck(user.CompanyId))
+        var podSaturationRequired = RequiresPodSaturationCheck(user.CompanyId);
+        var podSaturationBypassed = false;
+
+        if (podSaturationRequired)
         {
             var podName = Environment.GetEnvironmentVariable("HOSTNAME");
             var impactedPodName = request.ImpactedPodName?.Trim();
@@ -45,8 +54,12 @@ public class AuthService : IAuthService
 
             if (!matches)
             {
+                AddCustomAttribute("podSaturation.required", podSaturationRequired);
+                AddCustomAttribute("podSaturation.bypassed", podSaturationBypassed);
                 return new LoginResult(LoginStatus.PodSaturated);
             }
+
+            podSaturationBypassed = true;
 
             if (user.CompanyId.HasValue)
             {
@@ -55,6 +68,19 @@ public class AuthService : IAuthService
         }
 
         var token = _jwtService.GenerateToken(user.Id, user.Email, user.Role);
+
+        AddCustomAttribute("podSaturation.required", podSaturationRequired);
+        AddCustomAttribute("podSaturation.bypassed", podSaturationBypassed);
+        AddCustomAttribute("user.id", user.Id);
+        AddCustomAttribute("user.role", user.Role);
+        if (user.CompanyId.HasValue)
+        {
+            AddCustomAttribute("user.companyId", user.CompanyId.Value);
+        }
+        if (!string.IsNullOrEmpty(user.Department))
+        {
+            AddCustomAttribute("user.department", user.Department);
+        }
 
         var response = new LoginResponse
         {
@@ -70,6 +96,13 @@ public class AuthService : IAuthService
         };
 
         return new LoginResult(LoginStatus.Success, response);
+    }
+
+    // New Relicのカスタム属性を現在のトランザクションに付与する。プロファイラエージェントが
+    // アタッチされていない場合はNewRelic.GetAgent()がno-op実装を返すため、常に安全に呼び出せる。
+    private static void AddCustomAttribute(string name, object value)
+    {
+        NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute(name, value);
     }
 
     // このPod自身がリソース飽和役(USER_POD_ROLE=primary)で、かつこのユーザーの会社が

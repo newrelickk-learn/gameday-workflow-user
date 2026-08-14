@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NewRelicAgent = NewRelic.Api.Agent.NewRelic;
 using UserService.Application.DTOs;
 using UserService.Application.Services;
 
@@ -23,6 +24,7 @@ public class AuthController : ControllerBase
         try
         {
             var result = await _authService.LoginAsync(request);
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("login.result", result.Status.ToString());
 
             return result.Status switch
             {
