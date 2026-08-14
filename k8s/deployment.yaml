@@ -40,6 +40,12 @@ spec:
             # すれば、イメージの再ビルド・再デプロイなしに即座に負荷を止められる。
             - name: CPU_SATURATION_ENABLED
               value: "true"
+            # 通常のCPU飽和（ベースライン）に加え、5分おきに20秒間だけさらに高い負荷に切り替えて
+            # スパイクを起こす（New Relic上でより分かりやすい波形にするための演出）。0にすると無効化。
+            - name: CPU_SPIKE_INTERVAL_MINUTES
+              value: "5"
+            - name: CPU_SPIKE_DURATION_SECONDS
+              value: "20"
             - name: ASPNETCORE_URLS
               value: "http://+:80"
             - name: ConnectionStrings__DefaultConnection

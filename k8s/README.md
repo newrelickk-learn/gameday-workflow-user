@@ -43,6 +43,25 @@ kubectl set env deployment/gameday-workflow-user CPU_SATURATION_ENABLED=false -n
 
 元に戻す場合は`CPU_SATURATION_ENABLED=true`を再度設定してください（Podが再起動します）。
 
+## GameDay第0章: 周期的なCPUスパイク
+
+ベースラインのCPU飽和（約40〜50%）に加えて、`CPU_SPIKE_INTERVAL_MINUTES`分おきに
+`CPU_SPIKE_DURATION_SECONDS`秒間だけ、より高いduty cycleに切り替えてスパイクを起こす機能。
+既定では5分おき・20秒間有効（`deployment.yaml`参照）。New Relic上でCPU使用率がベースラインと
+スパイクを繰り返す波形になり、より分かりやすい見た目になる。
+
+スパイク時間はliveness/readinessの猶予（`periodSeconds`×`failureThreshold` = 15秒×8回 = 120秒）
+より十分短く保つこと。既定の20秒であれば安全マージンは十分にある。無効化するには
+`CPU_SPIKE_INTERVAL_MINUTES=0`を設定する（Podの再起動が必要）。
+
+```bash
+# 例: スパイクを無効化する場合
+kubectl set env deployment/gameday-workflow-user CPU_SPIKE_INTERVAL_MINUTES=0 -n gameday-workflow
+
+# 例: 3分おき・30秒間に変更する場合
+kubectl set env deployment/gameday-workflow-user CPU_SPIKE_INTERVAL_MINUTES=3 CPU_SPIKE_DURATION_SECONDS=30 -n gameday-workflow
+```
+
 ## GameDay第0章: 「突破済み」の有効期限
 
 チームが一度正しいPod名でログインに成功すると、その会社(CompanyId)はプロセス内メモリに
