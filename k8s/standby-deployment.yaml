@@ -85,6 +85,18 @@ spec:
               value: "/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so"
             - name: NEW_RELIC_APP_NAME
               value: "gameday-workflow-user"
+            # nri-metadata-injection未導入のため、Downward APIでKubernetesメタデータを手動注入
+            # （詳細はdeployment.yamlのコメントを参照）
+            - name: NEW_RELIC_METADATA_KUBERNETES_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NEW_RELIC_METADATA_KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: NEW_RELIC_METADATA_KUBERNETES_CONTAINER_NAME
+              value: "gameday-workflow-user"
             - name: NEW_RELIC_LICENSE_KEY
               valueFrom:
                 secretKeyRef:

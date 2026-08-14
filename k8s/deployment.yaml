@@ -89,6 +89,20 @@ spec:
               value: "/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so"
             - name: NEW_RELIC_APP_NAME
               value: "gameday-workflow-user"
+            # nri-metadata-injection（Kubernetes統合のMutatingWebhook）を導入していないため、
+            # 通常そのWebhookが自動注入するNEW_RELIC_METADATA_KUBERNETES_*をDownward APIで
+            # 手動で注入する。これがないと.NETエージェントがどのPodで処理したかをAPM側の
+            # トランザクション/エラーに付与できず、OTel側のKubernetesメトリクスと紐付けられない。
+            - name: NEW_RELIC_METADATA_KUBERNETES_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NEW_RELIC_METADATA_KUBERNETES_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: NEW_RELIC_METADATA_KUBERNETES_CONTAINER_NAME
+              value: "gameday-workflow-user"
             - name: NEW_RELIC_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
