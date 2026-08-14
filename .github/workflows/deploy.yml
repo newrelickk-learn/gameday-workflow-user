@@ -109,6 +109,16 @@ jobs:
           # GameDay第0章: standby Podも同じイメージを使う（USER_POD_ROLEの値だけがprimaryと異なる）
           sed -i "s|image: .*|image: ${{ needs.build.outputs.image }}|" k8s/standby-deployment.yaml
           kubectl apply -f k8s/namespace.yaml
+
+          # Deployment.spec.selectorは不変のため、既存Deploymentのselectorが今回のマニフェストと
+          # 食い違う場合（GameDay第0章でpod-role: primaryを追加した等）は、一度だけ削除してから
+          # 再作成する。selectorが既に一致していれば通常のapplyでin-place更新される（毎回削除しない）。
+          current_pod_role=$(kubectl get deployment ${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }} -o jsonpath='{.spec.selector.matchLabels.pod-role}' 2>/dev/null || true)
+          if [ "$current_pod_role" != "primary" ]; then
+            echo "Recreating deployment/${{ env.K8S_DEPLOYMENT }} (selector changed, e.g. pod-role added)"
+            kubectl delete deployment ${{ env.K8S_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }} --ignore-not-found=true
+          fi
+
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/standby-deployment.yaml
           kubectl apply -f k8s/service.yaml
