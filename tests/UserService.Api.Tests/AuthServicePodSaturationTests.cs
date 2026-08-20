@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using System.Net.Http;
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using UserService.Application.DTOs;
 using UserService.Application.Services;
 using UserService.Domain.Entities;
@@ -40,7 +42,19 @@ public class AuthServicePodSaturationTests
             })
             .Build();
 
-        return new AuthService(new FakeUserRepository(user), new FakeJwtService(), configuration);
+        return new AuthService(
+            new FakeUserRepository(user),
+            new FakeJwtService(),
+            configuration,
+            new FakeHttpClientFactory(),
+            NullLogger<AuthService>.Instance);
+    }
+
+    // NotifyChapterClearedAsyncはInternalService:ApiKeyが未設定なら早期returnするため、
+    // テストではこのFactoryは実際には呼ばれない（テスト用configにApiKeyを入れていないため）。
+    private sealed class FakeHttpClientFactory : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new HttpClient();
     }
 
     // AuthService内部のstatic「突破済み会社→突破したUTC日付」辞書に、テストからだけ直接書き込む

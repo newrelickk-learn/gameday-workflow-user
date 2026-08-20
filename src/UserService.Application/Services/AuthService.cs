@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Net.Http.Json;
 using BCrypt.Net;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NewRelicAgent = NewRelic.Api.Agent.NewRelic;
 using UserService.Application.DTOs;
 using UserService.Infrastructure.Data.Repositories;
@@ -19,12 +21,21 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
     private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(IUserRepository userRepository, IJwtService jwtService, IConfiguration configuration)
+    public AuthService(
+        IUserRepository userRepository,
+        IJwtService jwtService,
+        IConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
+        ILogger<AuthService> logger)
     {
         _userRepository = userRepository;
         _jwtService = jwtService;
         _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     public async Task<LoginResult> LoginAsync(LoginRequest request)
@@ -64,6 +75,9 @@ public class AuthService : IAuthService
             if (user.CompanyId.HasValue)
             {
                 _podSaturationBypassedCompanies[user.CompanyId.Value] = DateOnly.FromDateTime(DateTime.UtcNow);
+                // GameDay第0章クリア。ログイン応答を遅延・失敗させないよう、
+                // fire-and-forgetで通知する（失敗しても握りつぶし、ログインには影響しない）。
+                _ = NotifyChapterClearedAsync(chapter: 0, companyId: user.CompanyId.Value);
             }
         }
 
@@ -133,6 +147,44 @@ public class AuthService : IAuthService
         // UTCの日付が変わった。失効。次回ログイン時はまたPod名の入力が必要になる
         _podSaturationBypassedCompanies.TryRemove(companyId.Value, out _);
         return true;
+    }
+
+    // GameDay演習: 章クリアをapplication-approvalサービスのchapter_progressテーブルに
+    // 記録する（サービス間通信用の内部API、既存のUSER_SERVICE_API_KEYと同じ共有鍵を使う）。
+    // ログイン応答のクリティカルパスには影響させないため、呼び出し元でfire-and-forgetし、
+    // 例外はここで完全に握りつぶす。
+    private async Task NotifyChapterClearedAsync(int chapter, int companyId)
+    {
+        try
+        {
+            var baseUrl = _configuration["ApplicationApprovalService:BaseUrl"]
+                ?? "http://gameday-workflow-application-approval:8002";
+            var apiKey = _configuration["InternalService:ApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                return;
+            }
+
+            using var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(3);
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+            var response = await client.PostAsJsonAsync(
+                $"{baseUrl}/api/v1/internal/chapters/{chapter}/mark-cleared",
+                new { companyId = companyId.ToString() });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "NotifyChapterClearedAsync: 章クリア通知が失敗しました。chapter={Chapter}, companyId={CompanyId}, status={Status}",
+                    chapter, companyId, response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            // ログイン処理自体には一切影響させない
+            _logger.LogWarning(ex, "NotifyChapterClearedAsync: 章クリア通知中に例外が発生しました。chapter={Chapter}, companyId={CompanyId}", chapter, companyId);
+        }
     }
 }
 
