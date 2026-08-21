@@ -9,5 +9,6 @@ public class UserDto
     public string? Department { get; set; }
     public int? CompanyId { get; set; }
     public int? ManagerId { get; set; }
+    public bool IsChapter1Target { get; set; }
 }
 

@@ -35,6 +35,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Department).HasMaxLength(255);
             entity.Property(e => e.CompanyId).IsRequired(false);
             entity.Property(e => e.ManagerId).IsRequired(false);
+            entity.Property(e => e.IsChapter1Target).IsRequired().HasDefaultValue(false);
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasOne(e => e.Company)
                 .WithMany()

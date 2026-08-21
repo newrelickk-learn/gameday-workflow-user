@@ -111,6 +111,7 @@ public class UserService : IUserService
         Role = user.Role,
         Department = user.Department,
         CompanyId = user.CompanyId,
-        ManagerId = user.ManagerId
+        ManagerId = user.ManagerId,
+        IsChapter1Target = user.IsChapter1Target
     };
 }
