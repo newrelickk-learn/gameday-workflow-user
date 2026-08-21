@@ -149,6 +149,22 @@ public class AuthService : IAuthService
         return true;
     }
 
+    // GameDay第0章: Deploymentの再起動（=New Relicのエージェント接続が一時的に切れる/
+    // インスタンスが入れ替わる）を伴わずに、運用者がPod飽和バイパス状態だけをリセット
+    // できるようにするための操作。companyIdを指定すればその会社のみ、nullなら全社。
+    public int ResetPodSaturationBypass(int? companyId)
+    {
+        if (companyId.HasValue)
+        {
+            var removed = _podSaturationBypassedCompanies.TryRemove(companyId.Value, out _);
+            return removed ? 1 : 0;
+        }
+
+        var count = _podSaturationBypassedCompanies.Count;
+        _podSaturationBypassedCompanies.Clear();
+        return count;
+    }
+
     // GameDay演習: 章クリアをapplication-approvalサービスのchapter_progressテーブルに
     // 記録する（サービス間通信用の内部API、既存のUSER_SERVICE_API_KEYと同じ共有鍵を使う）。
     // ログイン応答のクリティカルパスには影響させないため、呼び出し元でfire-and-forgetし、
