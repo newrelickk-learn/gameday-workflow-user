@@ -83,8 +83,11 @@ spec:
               value: "/usr/local/newrelic-dotnet-agent"
             - name: CORECLR_PROFILER_PATH
               value: "/usr/local/newrelic-dotnet-agent/libNewRelicProfiler.so"
+            # primaryと同じappNameにすると、New Relic上で「1 Deployment名 = 1 APMの画面」という
+            # 対応が崩れ、K8s側のDeployment名(standby)とAPM上の表示名(primaryと同じ名前)が
+            # 食い違って混乱の元になる。standbyだけ別のappNameにして1:1を保つ。
             - name: NEW_RELIC_APP_NAME
-              value: "gameday-workflow-user"
+              value: "gameday-workflow-user-standby"
             # nri-metadata-injection未導入のため、Downward APIでKubernetesメタデータを手動注入
             # （詳細はdeployment.yamlのコメントを参照）
             - name: NEW_RELIC_METADATA_KUBERNETES_POD_NAME
