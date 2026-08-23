@@ -268,6 +268,9 @@ public class AuthServicePodSaturationTests
         public Task<IEnumerable<User>> GetByCompanyIdAsync(int companyId) =>
             Task.FromResult<IEnumerable<User>>(_user.CompanyId == companyId ? new[] { _user } : Array.Empty<User>());
 
+        public Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<int> ids) =>
+            Task.FromResult<IEnumerable<User>>(ids.Contains(_user.Id) ? new[] { _user } : Array.Empty<User>());
+
         public Task<User> CreateAsync(User user) => Task.FromResult(user);
 
         public Task<User> UpdateAsync(User user) => Task.FromResult(user);

@@ -33,6 +33,17 @@ public class UserRepository : IUserRepository
         return await _context.Users.Where(u => u.CompanyId == companyId).ToListAsync();
     }
 
+    public async Task<IEnumerable<User>> GetByIdsAsync(IEnumerable<int> ids)
+    {
+        var idList = ids.Distinct().ToList();
+        if (idList.Count == 0)
+        {
+            return Enumerable.Empty<User>();
+        }
+
+        return await _context.Users.Where(u => idList.Contains(u.Id)).ToListAsync();
+    }
+
     public async Task<User> CreateAsync(User user)
     {
         _context.Users.Add(user);

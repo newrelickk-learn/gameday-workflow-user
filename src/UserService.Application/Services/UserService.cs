@@ -35,6 +35,24 @@ public class UserService : IUserService
         return users.Select(ToDto);
     }
 
+    public async Task<IEnumerable<UserDto>> GetUsersByIdsAsync(IEnumerable<string> ids)
+    {
+        var parsedIds = ids
+            .Select(id => int.TryParse(id, out var parsed) ? (int?)parsed : null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        if (parsedIds.Count == 0)
+        {
+            return Enumerable.Empty<UserDto>();
+        }
+
+        var users = await _userRepository.GetByIdsAsync(parsedIds);
+        return users.Select(ToDto);
+    }
+
     public async Task<UpdateManagerResult> UpdateManagerAsync(int actingCompanyId, string targetUserId, int? newManagerId)
     {
         if (!int.TryParse(targetUserId, out var targetId))

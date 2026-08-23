@@ -43,6 +43,35 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// 複数ユーザーの情報を一括取得する（承認者向け申請一覧等でのN+1呼び出しを避けるためのバッチAPI）。
+    /// リテラルパス "batch" は ASP.NET Core のルーティング優先度により "{id}" より優先してマッチするため、
+    /// GetUserById との衝突は発生しない。
+    /// </summary>
+    [HttpGet("batch")]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetUsersByIds([FromQuery] List<string> ids)
+    {
+        try
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return Ok(Enumerable.Empty<UserDto>());
+            }
+
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.batchRequestedCount", ids.Count);
+
+            var users = (await _userService.GetUsersByIdsAsync(ids)).ToList();
+            NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute("user.batchFoundCount", users.Count);
+
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving users batch");
+            return StatusCode(500, new { error = "INTERNAL_SERVER_ERROR", message = "サーバーエラーが発生しました" });
+        }
+    }
+
     [HttpGet("{id}/manager")]
     public async Task<ActionResult<UserDto>> GetManagerByUserId(string id)
     {
