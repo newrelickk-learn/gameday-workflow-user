@@ -134,6 +134,13 @@ public class AuthService : IAuthService
             return true;
         }
 
+        // 機能テスト専用会社(company_id 101-120)はGameDay第0章の対象外。
+        // 毎回New RelicでPodを特定する手間を省くため、常にチェックをスキップする。
+        if (companyId.Value is >= 101 and <= 120)
+        {
+            return false;
+        }
+
         if (!_podSaturationBypassedCompanies.TryGetValue(companyId.Value, out var bypassedDate))
         {
             return true;

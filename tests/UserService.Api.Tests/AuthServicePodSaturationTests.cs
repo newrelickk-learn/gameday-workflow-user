@@ -225,6 +225,44 @@ public class AuthServicePodSaturationTests
         result.Status.Should().Be(LoginStatus.Success);
     }
 
+    // 機能テスト専用会社(company_id 101-120)はGameDay第0章の対象外とし、常にPod飽和チェックを
+    // スキップする（実装DBのシード:13-init-test-companies.sqlと対応する範囲）。
+    [Theory]
+    [InlineData(101)]
+    [InlineData(110)]
+    [InlineData(120)]
+    public async Task Login_WhenCompanyIdIsInTestCompanyRange_NeverRequiresPodName(int companyId)
+    {
+        var user = BuildUser(companyId);
+        var authService = CreateAuthService(user, "primary");
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = user.Email,
+            Password = CorrectPassword,
+        });
+
+        result.Status.Should().Be(LoginStatus.Success);
+    }
+
+    // テスト専用範囲の境界(100, 121)はGameDay対象会社のままなので、通常どおりPod飽和対象になる。
+    [Theory]
+    [InlineData(100)]
+    [InlineData(121)]
+    public async Task Login_WhenCompanyIdIsJustOutsideTestCompanyRange_StillRequiresPodName(int companyId)
+    {
+        var user = BuildUser(companyId);
+        var authService = CreateAuthService(user, "primary");
+
+        var result = await authService.LoginAsync(new LoginRequest
+        {
+            Email = user.Email,
+            Password = CorrectPassword,
+        });
+
+        result.Status.Should().Be(LoginStatus.PodSaturated);
+    }
+
     [Fact]
     public async Task Login_WithWrongPassword_ReturnsInvalidCredentials_RegardlessOfPodRole()
     {
