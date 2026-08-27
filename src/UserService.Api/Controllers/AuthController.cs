@@ -41,12 +41,6 @@ public class AuthController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// [運用用途] GameDay第0章のPod飽和バイパス状態をリセットする。
-    /// Deploymentの再起動（New Relicエージェント接続の切断・インスタンス入れ替えを伴う）を
-    /// せずに済ませるための代替手段。X-API-Key認証のみで呼べる（ユーザーのJWTは不要）。
-    /// companyIdを指定すればその会社のみ、省略すれば全社をリセットする。
-    /// </summary>
     [HttpDelete("pod-saturation-bypass")]
     [Authorize(AuthenticationSchemes = "ApiKey")]
     public ActionResult ResetPodSaturationBypass([FromQuery] int? companyId)

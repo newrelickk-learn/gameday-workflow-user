@@ -1,14 +1,5 @@
--- 初期データ投入用SQLスクリプト
--- このスクリプトは、データベースのテーブル作成と初期データ投入を行います
--- 
--- PasswordHashの値は、"password"という文字列をBCryptでハッシュ化した実際の値が設定されています
--- 全ユーザーのデフォルトパスワードは "password" です
 
--- 既存データを削除（オプション: 必要に応じてコメントアウト）
--- DELETE FROM "Users";
--- DELETE FROM "Companies";
 
--- Companiesテーブルを作成
 CREATE TABLE IF NOT EXISTS "Companies" (
     "Id" INTEGER NOT NULL,
     "Name" VARCHAR(255) NOT NULL,
@@ -17,9 +8,6 @@ CREATE TABLE IF NOT EXISTS "Companies" (
     CONSTRAINT "PK_Companies" PRIMARY KEY ("Id")
 );
 
--- Usersテーブルを作成（CompanyId・ManagerIdカラムを含む）
--- ManagerIdは直属の上司（同じUsersテーブルのId）を指す自己参照カラム。
--- 入社手続きの登録漏れがあった場合はNULLになる（GameDayシナリオ ステップ1の障害データ）。
 CREATE TABLE IF NOT EXISTS "Users" (
     "Id" INTEGER NOT NULL,
     "Name" VARCHAR(255) NOT NULL,
@@ -38,7 +26,6 @@ CREATE TABLE IF NOT EXISTS "Users" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_Users_Email" ON "Users" ("Email");
 
--- 会社データを投入 (50社)
 INSERT INTO "Companies" ("Id", "Name", "CreatedAt", "UpdatedAt") VALUES
 (1, '株式会社テクノソリューション', NOW(), NOW()),
 (2, 'デジタルイノベーション株式会社', NOW(), NOW()),
@@ -91,7 +78,6 @@ INSERT INTO "Companies" ("Id", "Name", "CreatedAt", "UpdatedAt") VALUES
 (49, '株式会社デジタルソリューション', NOW(), NOW()),
 (50, '株式会社システムテクノロジー', NOW(), NOW());
 
--- 開発グループA長 (director): ID 1051-1100 (50名)
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
 (1051, '本部長', 'director@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 1, NULL, NOW(), NOW()),
 (1052, '鈴木 健太', 'suzuki.kenta@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 2, NULL, NOW(), NOW()),
@@ -144,7 +130,6 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (1099, '金子 直樹', 'kaneko.naoki@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 49, NULL, NOW(), NOW()),
 (1100, '和田 智也', 'wada.tomoya@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 50, NULL, NOW(), NOW());
 
--- 経理 (accounting): ID 16051-16100 (50名)
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
 (16051, '経理', 'accounting@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 1, 1051, NOW(), NOW()),
 (16052, '山本 さくら', 'yamamoto.sakura@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 2, 1052, NOW(), NOW()),
@@ -197,7 +182,6 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (16099, '加藤 由美', 'kato.yumi@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 49, 1099, NOW(), NOW()),
 (16100, '吉田 麻衣', 'yoshida.mai@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 50, 1100, NOW(), NOW());
 
--- 上長 (manager): ID 21051-21100 (50名)
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
 (21051, '上長', 'manager@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 1, 1051, NOW(), NOW()),
 (21052, '橋本 亮太', 'hashimoto.ryota@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 2, 1052, NOW(), NOW()),
@@ -250,7 +234,6 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (21099, '山崎 正樹', 'yamazaki.masaki105@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 49, 1099, NOW(), NOW()),
 (21100, '森 貴之', 'mori.takayuki715@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 50, 1100, NOW(), NOW());
 
--- 開発エンジニア (engineer): ID 28151-28200 (50名)
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
 (28151, '開発エンジニア', 'engineer@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 1, 21051, NOW(), NOW()),
 (28152, '坂本 健二', 'sakamoto.kenji312@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 2, 21052, NOW(), NOW()),
@@ -302,8 +285,5 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (28198, '岡田 良太', 'okada.ryota230@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 48, 21098, NOW(), NOW()),
 (28199, '長谷川 優太', 'hasegawa.yuta947@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 49, 21099, NOW(), NOW()),
 (28200, '村上 翔平', 'murakami.shohei952@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 50, 21100, NOW(), NOW()),
--- GameDayシナリオ ステップ1(経費申請)用の障害データ:
--- 中途入社したてのエンジニア。入社手続きの登録漏れにより ManagerId が NULL になっている。
--- (本来は同じ会社(CompanyId=1)の上長である ID 21051 が設定されるべきだったレコード)
 (28201, '早坂 直人', 'hayasaka.naoto@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 1, NULL, NOW(), NOW());
 

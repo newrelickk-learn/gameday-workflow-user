@@ -41,8 +41,6 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.CompanyId)
                 .OnDelete(DeleteBehavior.SetNull);
-            // ManagerIdは同じUsersテーブルへの自己参照（直属の上司）。
-            // 入社手続きの登録漏れ等でNULLになり得るため、SetNullで整合性を保つ。
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.ManagerId)

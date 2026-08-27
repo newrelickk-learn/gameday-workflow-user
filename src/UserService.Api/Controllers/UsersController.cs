@@ -43,11 +43,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// 複数ユーザーの情報を一括取得する（承認者向け申請一覧等でのN+1呼び出しを避けるためのバッチAPI）。
-    /// リテラルパス "batch" は ASP.NET Core のルーティング優先度により "{id}" より優先してマッチするため、
-    /// GetUserById との衝突は発生しない。
-    /// </summary>
     [HttpGet("batch")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetUsersByIds([FromQuery] List<string> ids)
     {
@@ -108,10 +103,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// 人事部ユーザー専用: ログイン中ユーザー(hr)の所属企業(CompanyId)のユーザー一覧を返す。
-    /// 直属の上長(ManagerId)を編集する対象を選ぶための一覧表示に使う。
-    /// </summary>
     [HttpGet("company")]
     [Authorize(Roles = "hr")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetCompanyUsers()
@@ -139,10 +130,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// 人事部ユーザー専用: 自社ユーザーの直属の上長(ManagerId)のみを更新する。
-    /// 他社のユーザー、または他社のユーザーを上長として指定する操作は拒否する。
-    /// </summary>
     [HttpPatch("{id}/manager")]
     [Authorize(Roles = "hr")]
     public async Task<ActionResult<UserDto>> UpdateManager(string id, [FromBody] UpdateManagerRequestDto request)

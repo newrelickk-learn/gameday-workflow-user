@@ -18,17 +18,14 @@ public class AuthControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task Login_WithValidCredentials_ReturnsTokenAndUser()
     {
-        // Arrange
         var request = new LoginRequest
         {
             Email = "engineer@example.com",
             Password = "password"
         };
 
-        // Act
         var response = await _client.PostAsJsonAsync("/auth/login", request);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
         loginResponse.Should().NotBeNull();
@@ -41,34 +38,28 @@ public class AuthControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task Login_WithInvalidEmail_ReturnsUnauthorized()
     {
-        // Arrange
         var request = new LoginRequest
         {
             Email = "invalid@example.com",
             Password = "password"
         };
 
-        // Act
         var response = await _client.PostAsJsonAsync("/auth/login", request);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
     public async Task Login_WithInvalidPassword_ReturnsUnauthorized()
     {
-        // Arrange
         var request = new LoginRequest
         {
             Email = "engineer@example.com",
             Password = "wrongpassword"
         };
 
-        // Act
         var response = await _client.PostAsJsonAsync("/auth/login", request);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -79,17 +70,14 @@ public class AuthControllerTests : IClassFixture<ApiTestFixture>
     [InlineData("engineer@example.com", "engineer")]
     public async Task Login_WithDifferentRoles_ReturnsCorrectRole(string email, string expectedRole)
     {
-        // Arrange
         var request = new LoginRequest
         {
             Email = email,
             Password = "password"
         };
 
-        // Act
         var response = await _client.PostAsJsonAsync("/auth/login", request);
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>();
         loginResponse.Should().NotBeNull();

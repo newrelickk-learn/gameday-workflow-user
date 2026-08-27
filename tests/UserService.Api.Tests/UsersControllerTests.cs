@@ -32,24 +32,19 @@ public class UsersControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task GetUserById_WithoutToken_ReturnsUnauthorized()
     {
-        // Act
         var response = await _client.GetAsync("/users/28151");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
     public async Task GetUserById_WithValidToken_ReturnsUser()
     {
-        // Arrange
         var token = await GetAuthTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act
         var response = await _client.GetAsync("/users/28151");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var user = await response.Content.ReadFromJsonAsync<UserDto>();
         user.Should().NotBeNull();
@@ -61,14 +56,11 @@ public class UsersControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task GetUserById_WithInvalidId_ReturnsNotFound()
     {
-        // Arrange
         var token = await GetAuthTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act
         var response = await _client.GetAsync("/users/99999");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -79,14 +71,11 @@ public class UsersControllerTests : IClassFixture<ApiTestFixture>
     [InlineData("28151", "engineer@example.com", "engineer")]
     public async Task GetUserById_WithDifferentUsers_ReturnsCorrectUser(string userId, string expectedEmail, string expectedRole)
     {
-        // Arrange
         var token = await GetAuthTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act
         var response = await _client.GetAsync($"/users/{userId}");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var user = await response.Content.ReadFromJsonAsync<UserDto>();
         user.Should().NotBeNull();
@@ -98,24 +87,19 @@ public class UsersControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task GetUsersByIds_WithoutToken_ReturnsUnauthorized()
     {
-        // Act
         var response = await _client.GetAsync("/users/batch?ids=28151&ids=21051");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
     public async Task GetUsersByIds_WithValidIds_ReturnsMatchingUsersOnly()
     {
-        // Arrange
         var token = await GetAuthTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act: 存在するID(28151, 21051)と存在しないID(99999)を混在させる
         var response = await _client.GetAsync("/users/batch?ids=28151&ids=21051&ids=99999");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var users = await response.Content.ReadFromJsonAsync<List<UserDto>>();
         users.Should().NotBeNull();
@@ -125,14 +109,11 @@ public class UsersControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task GetUsersByIds_WithEmptyIds_ReturnsEmptyArray()
     {
-        // Arrange
         var token = await GetAuthTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act
         var response = await _client.GetAsync("/users/batch");
 
-        // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var users = await response.Content.ReadFromJsonAsync<List<UserDto>>();
         users.Should().NotBeNull();
@@ -142,15 +123,12 @@ public class UsersControllerTests : IClassFixture<ApiTestFixture>
     [Fact]
     public async Task GetUserById_And_GetUsersByIds_DoNotConflictInRouting()
     {
-        // Arrange
         var token = await GetAuthTokenAsync();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        // Act: 単一取得エンドポイントとバッチエンドポイントが互いに奪い合わないことを確認
         var singleResponse = await _client.GetAsync("/users/28151");
         var batchResponse = await _client.GetAsync("/users/batch?ids=28151");
 
-        // Assert
         singleResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var user = await singleResponse.Content.ReadFromJsonAsync<UserDto>();
         user!.Id.Should().Be("28151");

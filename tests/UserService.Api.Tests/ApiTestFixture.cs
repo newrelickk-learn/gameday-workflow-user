@@ -14,7 +14,6 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
     {
         builder.ConfigureServices(services =>
         {
-            // Remove the real database
             var descriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
 
@@ -23,23 +22,19 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
                 services.Remove(descriptor);
             }
 
-            // Add in-memory database for testing
             services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseInMemoryDatabase("TestDb");
             });
 
-            // Build the service provider
             var sp = services.BuildServiceProvider();
 
-            // Initialize database with test data
             using (var scope = sp.CreateScope())
             {
                 var scopedServices = scope.ServiceProvider;
                 var db = scopedServices.GetRequiredService<ApplicationDbContext>();
                 db.Database.EnsureCreated();
 
-                // Seed test data
                 SeedTestData(db);
             }
         });
@@ -54,7 +49,6 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
             return;
         }
 
-        // Add test users matching the seed data structure
         var users = new[]
         {
             new UserService.Domain.Entities.User
@@ -108,6 +102,5 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
     }
 }
 
-// Make Program class accessible for WebApplicationFactory
 public partial class Program { }
 

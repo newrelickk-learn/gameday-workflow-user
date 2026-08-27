@@ -12,10 +12,6 @@ namespace UserService.Application.Services;
 
 public class AuthService : IAuthService
 {
-    // GameDay第0章: 一度でも正しいPod名で突破した会社(CompanyId)は、突破したUTC日付の間だけ
-    // Pod名の入力を求めない。UTC 0時を過ぎると（日付が変われば）失効し、再度Pod名の入力が必要になる。
-    // Serviceのselectorがリソース飽和Pod(USER_POD_ROLE=primary)1台に固定されているため、
-    // プロセス内メモリで持つだけで一貫性が保てる。
     private static readonly ConcurrentDictionary<int, DateOnly> _podSaturationBypassedCompanies = new();
 
     private readonly IUserRepository _userRepository;
@@ -75,8 +71,6 @@ public class AuthService : IAuthService
             if (user.CompanyId.HasValue)
             {
                 _podSaturationBypassedCompanies[user.CompanyId.Value] = DateOnly.FromDateTime(DateTime.UtcNow);
-                // GameDay第0章クリア。ログイン応答を遅延・失敗させないよう、
-                // fire-and-forgetで通知する（失敗しても握りつぶし、ログインには影響しない）。
                 _ = NotifyChapterClearedAsync(chapter: 0, companyId: user.CompanyId.Value);
             }
         }
@@ -112,15 +106,11 @@ public class AuthService : IAuthService
         return new LoginResult(LoginStatus.Success, response);
     }
 
-    // New Relicのカスタム属性を現在のトランザクションに付与する。プロファイラエージェントが
-    // アタッチされていない場合はNewRelic.GetAgent()がno-op実装を返すため、常に安全に呼び出せる。
     private static void AddCustomAttribute(string name, object value)
     {
         NewRelicAgent.GetAgent().CurrentTransaction.AddCustomAttribute(name, value);
     }
 
-    // このPod自身がリソース飽和役(USER_POD_ROLE=primary)で、かつこのユーザーの会社が
-    // まだPod名を突破していない（またはUTCの日付が変わり失効した）場合のみ、チェックが必要
     private bool RequiresPodSaturationCheck(int? companyId)
     {
         var podRole = _configuration["USER_POD_ROLE"];
@@ -134,8 +124,6 @@ public class AuthService : IAuthService
             return true;
         }
 
-        // 機能テスト専用会社(company_id 101-120)はGameDay第0章の対象外。
-        // 毎回New RelicでPodを特定する手間を省くため、常にチェックをスキップする。
         if (companyId.Value is >= 101 and <= 120)
         {
             return false;
@@ -151,14 +139,10 @@ public class AuthService : IAuthService
             return false;
         }
 
-        // UTCの日付が変わった。失効。次回ログイン時はまたPod名の入力が必要になる
         _podSaturationBypassedCompanies.TryRemove(companyId.Value, out _);
         return true;
     }
 
-    // GameDay第0章: Deploymentの再起動（=New Relicのエージェント接続が一時的に切れる/
-    // インスタンスが入れ替わる）を伴わずに、運用者がPod飽和バイパス状態だけをリセット
-    // できるようにするための操作。companyIdを指定すればその会社のみ、nullなら全社。
     public int ResetPodSaturationBypass(int? companyId)
     {
         if (companyId.HasValue)
@@ -172,10 +156,6 @@ public class AuthService : IAuthService
         return count;
     }
 
-    // GameDay演習: 章クリアをapplication-approvalサービスのchapter_progressテーブルに
-    // 記録する（サービス間通信用の内部API、既存のUSER_SERVICE_API_KEYと同じ共有鍵を使う）。
-    // ログイン応答のクリティカルパスには影響させないため、呼び出し元でfire-and-forgetし、
-    // 例外はここで完全に握りつぶす。
     private async Task NotifyChapterClearedAsync(int chapter, int companyId)
     {
         try
@@ -205,7 +185,6 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            // ログイン処理自体には一切影響させない
             _logger.LogWarning(ex, "NotifyChapterClearedAsync: 章クリア通知中に例外が発生しました。chapter={Chapter}, companyId={CompanyId}", chapter, companyId);
         }
     }

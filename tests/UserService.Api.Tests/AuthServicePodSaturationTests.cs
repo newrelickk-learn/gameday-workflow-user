@@ -13,10 +13,6 @@ using Xunit;
 
 namespace UserService.Api.Tests;
 
-/// <summary>
-/// GameDay第0章: USER_POD_ROLE=primary のときだけ、正しいPod名(HOSTNAME)を提出しないとログインできない、
-/// かつ一度突破した会社(CompanyId)はその後Pod名なしでもログインできる、という挙動のテスト。
-/// </summary>
 public class AuthServicePodSaturationTests
 {
     private const string CorrectPassword = "password";
@@ -50,15 +46,11 @@ public class AuthServicePodSaturationTests
             NullLogger<AuthService>.Instance);
     }
 
-    // NotifyChapterClearedAsyncはInternalService:ApiKeyが未設定なら早期returnするため、
-    // テストではこのFactoryは実際には呼ばれない（テスト用configにApiKeyを入れていないため）。
     private sealed class FakeHttpClientFactory : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) => new HttpClient();
     }
 
-    // AuthService内部のstatic「突破済み会社→突破したUTC日付」辞書に、テストからだけ直接書き込む
-    // （実装は本番のUTC日付比較ロジックそのままにしつつ、「前日に突破済み」の状態を再現するため）
     private static void SeedBypassedDate(int companyId, DateOnly date)
     {
         var field = typeof(AuthService).GetField(
@@ -155,7 +147,6 @@ public class AuthServicePodSaturationTests
             });
             first.Status.Should().Be(LoginStatus.Success);
 
-            // 同じ会社の別ユーザーが、Pod名なしで再ログインしても通る（新しいAuthServiceインスタンスでも突破済みは共有される）
             var secondAuthService = CreateAuthService(user, "primary");
             var second = await secondAuthService.LoginAsync(new LoginRequest
             {
@@ -176,7 +167,6 @@ public class AuthServicePodSaturationTests
     {
         var companyId = NextCompanyId();
         var user = BuildUser(companyId);
-        // 前日のUTC日付で突破済みだったことにする
         SeedBypassedDate(companyId, DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1));
 
         var authService = CreateAuthService(user, "primary");
@@ -194,7 +184,6 @@ public class AuthServicePodSaturationTests
     {
         var companyId = NextCompanyId();
         var user = BuildUser(companyId);
-        // 今日のUTC日付で既に突破済みだったことにする
         SeedBypassedDate(companyId, DateOnly.FromDateTime(DateTime.UtcNow));
 
         var authService = CreateAuthService(user, "primary");
@@ -225,8 +214,6 @@ public class AuthServicePodSaturationTests
         result.Status.Should().Be(LoginStatus.Success);
     }
 
-    // 機能テスト専用会社(company_id 101-120)はGameDay第0章の対象外とし、常にPod飽和チェックを
-    // スキップする（実装DBのシード:13-init-test-companies.sqlと対応する範囲）。
     [Theory]
     [InlineData(101)]
     [InlineData(110)]
@@ -245,7 +232,6 @@ public class AuthServicePodSaturationTests
         result.Status.Should().Be(LoginStatus.Success);
     }
 
-    // テスト専用範囲の境界(100, 121)はGameDay対象会社のままなので、通常どおりPod飽和対象になる。
     [Theory]
     [InlineData(100)]
     [InlineData(121)]
@@ -280,8 +266,6 @@ public class AuthServicePodSaturationTests
         result.Status.Should().Be(LoginStatus.InvalidCredentials);
     }
 
-    // 会社(CompanyId)ごとの突破済みフラグはstatic(プロセス内共有)なので、テスト間で衝突しないよう
-    // テストごとに異なるCompanyIdを振る。
     private static int _companyIdCounter = 900_000;
     private static int NextCompanyId() => Interlocked.Increment(ref _companyIdCounter);
 

@@ -17,13 +17,12 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         IConfiguration configuration)
         : base(options, logger, encoder)
     {
-        _apiKey = configuration["InternalService:ApiKey"] 
+        _apiKey = configuration["InternalService:ApiKey"]
             ?? throw new InvalidOperationException("InternalService:ApiKey is not configured");
     }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // X-API-KeyヘッダーからAPI Keyを取得
         if (!Request.Headers.TryGetValue("X-API-Key", out var apiKeyHeaderValues))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
@@ -35,13 +34,11 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
-        // API Keyを検証
         if (providedApiKey != _apiKey)
         {
             return Task.FromResult(AuthenticateResult.Fail("Invalid API Key"));
         }
 
-        // 内部サービス用のクレームを作成
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, "InternalService"),
