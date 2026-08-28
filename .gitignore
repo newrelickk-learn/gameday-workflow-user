@@ -201,3 +201,4 @@ coverage/
 # Mutation testing
 **/StrykerOutput/
 **/mutation-report.html
+.serena/
