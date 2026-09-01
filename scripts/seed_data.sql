@@ -79,7 +79,7 @@ INSERT INTO "Companies" ("Id", "Name", "CreatedAt", "UpdatedAt") VALUES
 (50, '株式会社システムテクノロジー', NOW(), NOW());
 
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
-(1051, '本部長', 'director@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 1, NULL, NOW(), NOW()),
+(1051, '高田 修一', 'takada.shuichi@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 1, NULL, NOW(), NOW()),
 (1052, '鈴木 健太', 'suzuki.kenta@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 2, NULL, NOW(), NOW()),
 (1053, '高橋 翔太', 'takahashi.shota@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 3, NULL, NOW(), NOW()),
 (1054, '田中 大樹', 'tanaka.daiki@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 4, NULL, NOW(), NOW()),
@@ -131,7 +131,7 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (1100, '和田 智也', 'wada.tomoya@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'director', '開発グループA', 50, NULL, NOW(), NOW());
 
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
-(16051, '経理', 'accounting@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 1, 1051, NOW(), NOW()),
+(16051, '平野 真央', 'hirano.mao@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 1, 1051, NOW(), NOW()),
 (16052, '山本 さくら', 'yamamoto.sakura@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 2, 1052, NOW(), NOW()),
 (16053, '松本 優奈', 'matsumoto.yuna@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 3, 1053, NOW(), NOW()),
 (16054, '井上 美月', 'inoue.mizuki@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 4, 1054, NOW(), NOW()),
@@ -183,7 +183,7 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (16100, '吉田 麻衣', 'yoshida.mai@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'accounting', '経理部', 50, 1100, NOW(), NOW());
 
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
-(21051, '上長', 'manager@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 1, 1051, NOW(), NOW()),
+(21051, '西山 隆', 'nishiyama.takashi@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 1, 1051, NOW(), NOW()),
 (21052, '橋本 亮太', 'hashimoto.ryota@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 2, 1052, NOW(), NOW()),
 (21053, '石川 雄太', 'ishikawa.yuta@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 3, 1053, NOW(), NOW()),
 (21054, '前田 誠', 'maeda.makoto@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 4, 1054, NOW(), NOW()),
@@ -235,7 +235,7 @@ INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department"
 (21100, '森 貴之', 'mori.takayuki715@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'manager', '開発グループA', 50, 1100, NOW(), NOW());
 
 INSERT INTO "Users" ("Id", "Name", "Email", "PasswordHash", "Role", "Department", "CompanyId", "ManagerId", "CreatedAt", "UpdatedAt") VALUES
-(28151, '開発エンジニア', 'engineer@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 1, 21051, NOW(), NOW()),
+(28151, '関根 大翔', 'sekine.hiroto@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 1, 21051, NOW(), NOW()),
 (28152, '坂本 健二', 'sakamoto.kenji312@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 2, 21052, NOW(), NOW()),
 (28153, '遠藤 博之', 'endo.hiroyuki815@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 3, 21053, NOW(), NOW()),
 (28154, '青木 明', 'aoki.akira761@learn.nrkk.technology', '$2a$11$e9yPGqUzrFXwS7Ucnsgb/.dDLgnzGKWxw4n7VD7qrGy11oazRbacG', 'engineer', '開発グループA', 4, 21054, NOW(), NOW()),
