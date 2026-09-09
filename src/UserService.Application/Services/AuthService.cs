@@ -160,8 +160,8 @@ public class AuthService : IAuthService
     {
         try
         {
-            var baseUrl = _configuration["ApplicationApprovalService:BaseUrl"]
-                ?? "http://gameday-workflow-application-approval:8002";
+            var baseUrl = _configuration["GameMasterService:BaseUrl"]
+                ?? "http://gameday-workflow-game-master:8006";
             var apiKey = _configuration["InternalService:ApiKey"];
             if (string.IsNullOrEmpty(apiKey))
             {

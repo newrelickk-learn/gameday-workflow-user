@@ -69,6 +69,9 @@ spec:
                 secretKeyRef:
                   name: gameday-workflow-user-secrets
                   key: internal-api-key
+            # ログイン時の章クリア通知(mark-cleared)先。k8s上の実際のService名を明示する。
+            - name: GameMasterService__BaseUrl
+              value: "http://gameday-workflow-game-master:8006"
             - name: Kestrel__Limits__MaxConcurrentConnections
               value: "1000"
             - name: Kestrel__Limits__MaxConcurrentUpgradedConnections
