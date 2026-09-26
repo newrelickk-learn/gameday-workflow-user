@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
-using System.Net.Http;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using UserService.Application.DTOs;
 using UserService.Application.Services;
 using UserService.Domain.Entities;
@@ -16,6 +17,7 @@ namespace UserService.Api.Tests;
 public class AuthServicePodSaturationTests
 {
     private const string CorrectPassword = "password";
+    private const string InternalApiKey = "test-internal-api-key";
 
     private static User BuildUser(int companyId) => new()
     {
@@ -35,20 +37,14 @@ public class AuthServicePodSaturationTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["USER_POD_ROLE"] = podRole,
+                ["InternalService:ApiKey"] = InternalApiKey,
             })
             .Build();
 
         return new AuthService(
             new FakeUserRepository(user),
             new FakeJwtService(),
-            configuration,
-            new FakeHttpClientFactory(),
-            NullLogger<AuthService>.Instance);
-    }
-
-    private sealed class FakeHttpClientFactory : IHttpClientFactory
-    {
-        public HttpClient CreateClient(string name) => new HttpClient();
+            configuration);
     }
 
     private static void SeedBypassedDate(int companyId, DateOnly date)
@@ -122,6 +118,13 @@ public class AuthServicePodSaturationTests
             result.Status.Should().Be(LoginStatus.Success);
             result.Response.Should().NotBeNull();
             result.Response!.Token.Should().NotBeNullOrEmpty();
+            // 章0クリアはgame-masterを呼ばず、引換券をレスポンスに載せてfrontendに届けてもらう。
+            result.Response.ChapterClearTokens.Should().ContainSingle();
+            var token = result.Response.ChapterClearTokens![0];
+            VerifySignature(token).Should().BeTrue();
+            var payload = DecodePayload(token);
+            payload.GetProperty("companyId").GetString().Should().Be(companyId.ToString());
+            payload.GetProperty("chapter").GetInt32().Should().Be(0);
         }
         finally
         {
@@ -155,6 +158,8 @@ public class AuthServicePodSaturationTests
             });
 
             second.Status.Should().Be(LoginStatus.Success);
+            // 当日すでにバイパス済みの再ログインでは、改めて章0のクリアを記録しない。
+            second.Response!.ChapterClearTokens.Should().BeNull();
         }
         finally
         {
@@ -264,6 +269,22 @@ public class AuthServicePodSaturationTests
         });
 
         result.Status.Should().Be(LoginStatus.InvalidCredentials);
+    }
+
+    private static bool VerifySignature(string token)
+    {
+        var parts = token.Split('.');
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(InternalApiKey));
+        var expected = Convert.ToBase64String(hmac.ComputeHash(Encoding.ASCII.GetBytes(parts[0])))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        return parts.Length == 2 && parts[1] == expected;
+    }
+
+    private static JsonElement DecodePayload(string token)
+    {
+        var payloadB64 = token.Split('.')[0].Replace('-', '+').Replace('_', '/');
+        payloadB64 = payloadB64.PadRight(payloadB64.Length + (4 - payloadB64.Length % 4) % 4, '=');
+        return JsonDocument.Parse(Convert.FromBase64String(payloadB64)).RootElement;
     }
 
     private static int _companyIdCounter = 900_000;

@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
-using System.Net.Http.Json;
 using BCrypt.Net;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using NewRelicAgent = NewRelic.Api.Agent.NewRelic;
 using UserService.Application.DTOs;
 using UserService.Infrastructure.Data.Repositories;
@@ -17,21 +15,15 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
     private readonly IConfiguration _configuration;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUserRepository userRepository,
         IJwtService jwtService,
-        IConfiguration configuration,
-        IHttpClientFactory httpClientFactory,
-        ILogger<AuthService> logger)
+        IConfiguration configuration)
     {
         _userRepository = userRepository;
         _jwtService = jwtService;
         _configuration = configuration;
-        _httpClientFactory = httpClientFactory;
-        _logger = logger;
     }
 
     public async Task<LoginResult> LoginAsync(LoginRequest request)
@@ -49,6 +41,7 @@ public class AuthService : IAuthService
 
         var podSaturationRequired = RequiresPodSaturationCheck(user.CompanyId);
         var podSaturationBypassed = false;
+        string? chapterClearToken = null;
 
         if (podSaturationRequired)
         {
@@ -71,7 +64,13 @@ public class AuthService : IAuthService
             if (user.CompanyId.HasValue)
             {
                 _podSaturationBypassedCompanies[user.CompanyId.Value] = DateOnly.FromDateTime(DateTime.UtcNow);
-                _ = NotifyChapterClearedAsync(chapter: 0, companyId: user.CompanyId.Value);
+                // 章0クリアはここからgame-masterを呼ばず、署名付きトークンをレスポンスに載せて
+                // frontendからgame-masterへ記録してもらう(ログインのトレースにgame-masterを混ぜないため)。
+                chapterClearToken = ChapterClearToken.Issue(
+                    _configuration["InternalService:ApiKey"],
+                    user.CompanyId.Value,
+                    chapter: 0,
+                    ChapterClearToken.DefaultTtl);
             }
         }
 
@@ -100,7 +99,8 @@ public class AuthService : IAuthService
                 Email = user.Email,
                 Role = user.Role,
                 Department = user.Department
-            }
+            },
+            ChapterClearTokens = chapterClearToken != null ? new List<string> { chapterClearToken } : null
         };
 
         return new LoginResult(LoginStatus.Success, response);
@@ -154,39 +154,6 @@ public class AuthService : IAuthService
         var count = _podSaturationBypassedCompanies.Count;
         _podSaturationBypassedCompanies.Clear();
         return count;
-    }
-
-    private async Task NotifyChapterClearedAsync(int chapter, int companyId)
-    {
-        try
-        {
-            var baseUrl = _configuration["GameMasterService:BaseUrl"]
-                ?? "http://gameday-workflow-game-master:8006";
-            var apiKey = _configuration["InternalService:ApiKey"];
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                return;
-            }
-
-            using var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromSeconds(3);
-            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
-
-            var response = await client.PostAsJsonAsync(
-                $"{baseUrl}/api/v1/internal/chapters/{chapter}/mark-cleared",
-                new { companyId = companyId.ToString() });
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning(
-                    "NotifyChapterClearedAsync: 章クリア通知が失敗しました。chapter={Chapter}, companyId={CompanyId}, status={Status}",
-                    chapter, companyId, response.StatusCode);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "NotifyChapterClearedAsync: 章クリア通知中に例外が発生しました。chapter={Chapter}, companyId={CompanyId}", chapter, companyId);
-        }
     }
 }
 
